@@ -203,11 +203,56 @@
   .app[data-state="responding"] .talk-ctrl{display:flex;}
   .app[data-state="listening"]  .listen-head{display:flex;}
   .app[data-state="listening"]  .caption{display:none;}
+
+  /* ============================================================
+     PASSWORD GATE (shown first, covers everything until unlocked)
+     ============================================================ */
+  #gate{
+    position:absolute; inset:0; z-index:100;
+    background:linear-gradient(180deg,var(--bg-1),var(--bg-2));
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:0 32px; text-align:center;
+    transition:opacity .4s ease;
+  }
+  #gate.hidden{opacity:0; visibility:hidden; pointer-events:none;}
+  .gate-logo{height:clamp(34px,6vmin,54px); width:auto; margin-bottom:clamp(26px,6vmin,52px);}
+  .gate-title{font-size:clamp(21px,5vmin,32px); font-weight:800; letter-spacing:-.3px; margin-bottom:8px;}
+  .gate-sub{color:var(--ink-soft); font-size:clamp(13px,3.4vmin,17px); line-height:1.4; margin-bottom:clamp(22px,5vmin,40px); max-width:300px;}
+  .gate-form{width:100%; max-width:340px; display:flex; flex-direction:column; gap:14px;}
+  .gate-input{
+    width:100%; height:clamp(52px,8vmin,64px); border-radius:16px; border:1.5px solid #d9d4c9;
+    background:#fff; padding:0 18px; font-size:17px; color:var(--ink); outline:none; text-align:center;
+    transition:border-color .15s;
+  }
+  .gate-input:focus{border-color:var(--orange-2);}
+  .gate-input.err{border-color:#e53935; animation:shake .35s;}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}60%{transform:translateX(8px)}80%{transform:translateX(-5px)}}
+  .gate-btn{
+    width:100%; height:clamp(52px,8vmin,64px); border:0; border-radius:16px; cursor:pointer;
+    background:linear-gradient(180deg,var(--orange-1),var(--orange-2)); color:#fff;
+    font-weight:800; font-size:18px; box-shadow:0 12px 26px rgba(255,90,0,.34);
+    transition:transform .12s;
+  }
+  .gate-btn:active{transform:scale(.97);}
+  .gate-err{color:#e53935; font-size:14px; min-height:18px;}
 </style>
 </head>
 <body>
 <div id="stageWrap">
   <div class="app" id="app" data-state="podcast">
+
+    <!-- ============ PASSWORD GATE ============ -->
+    <div id="gate">
+      <img class="gate-logo" src="assets/befreed-logo.png" alt="BeFreed">
+      <div class="gate-title">Enter password</div>
+      <div class="gate-sub">This library is private. Enter the password to continue.</div>
+      <form class="gate-form" id="gateForm">
+        <input class="gate-input" id="gateInput" type="password" placeholder="Password"
+               autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <div class="gate-err" id="gateErr"></div>
+        <button class="gate-btn" type="submit">Enter</button>
+      </form>
+    </div>
 
     <!-- ============ LIBRARY ============ -->
     <section class="screen active" id="library">
@@ -352,6 +397,32 @@ const BOOKS = [
 const $ = s => document.querySelector(s);
 const app = $("#app");
 const player = $("#player");
+
+/* ============================================================
+   PASSWORD GATE — SHA-256 hash check, unlock remembered per session
+   ============================================================ */
+const PASS_HASH = "95f7a7097c4e6de04e36c508539ea015ef84fa3ec1134c88daaaf06f2fe529ec";
+const gate = $("#gate"), gateForm = $("#gateForm"), gateInput = $("#gateInput"), gateErr = $("#gateErr");
+async function sha256hex(s){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+function unlock(){ gate.classList.add("hidden"); }
+if(sessionStorage.getItem("bf_unlocked")==="1"){ unlock(); }
+else { setTimeout(()=>gateInput && gateInput.focus(), 200); }
+gateForm.addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const h = await sha256hex(gateInput.value);
+  if(h === PASS_HASH){
+    sessionStorage.setItem("bf_unlocked","1");
+    gateErr.textContent = "";
+    unlock();
+  }else{
+    gateErr.textContent = "Incorrect password";
+    gateInput.classList.add("err"); gateInput.select();
+    setTimeout(()=>gateInput.classList.remove("err"), 420);
+  }
+});
 
 /* ---- cover element (with image fallback to placeholder) ---- */
 function coverEl(book){
