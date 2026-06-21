@@ -331,64 +331,49 @@
 
 <script>
 /* ============================================================
-   BOOKS CONFIG — drop your assets into /assets and edit here.
-   cover      : cover image (leave "" for the CSS placeholder)
-   audio      : narration that plays when the book "talks" (podcast)
-   talkAudio  : staged reply played in Talk-Back mode (after you tap mic)
-   captions   : narration transcript  [{t:sec, text}]   (podcast sync)
-   replyCaps  : reply transcript      [{t:sec, text}]   (talk-back sync)
+   BOOKS CONFIG
+   Each book is a turn-based conversation: `clips` is an ordered list of
+   the book's spoken replies. clip[0] auto-plays on entry; tapping the
+   mic advances to the next clip (with a "Listening" gap in between for
+   the live audience to speak). `text` is the transcript shown under the
+   cover while that clip plays.
    ============================================================ */
 const BOOKS = [
   {
-    id:"atomic", title:"Atomic Habits", author:"James Clear",
-    cover:"assets/atomic-habits.jpg",
-    audio:"assets/atomic.mp3",          // <-- add narration audio
-    talkAudio:"assets/atomic-reply.mp3",// <-- add staged reply audio
-    captions:[
-      {t:0.0, text:"You do not rise to the level of your goals."},
-      {t:4.0, text:"You fall to the level of your systems."},
-    ],
-    replyCaps:[
-      {t:0.0, text:"Great — so where would a tiny 1% change fit today?"},
+    id:"sapiens", title:"Sapiens", author:"Yuval Noah Harari",
+    cover:"assets/sapiens.jpg",
+    clips:[
+      { src:"assets/script1-1.mp3", text:"OH you wanna read me NOW?? After THREE YEARS?? You left me on read longer than your situationship. That's delulu. Lock in!" },
+      { src:"assets/script1-2.mp3", text:"You SHOULD be. Minus ten thousand aura. No cap." },
+      { src:"assets/script1-3.mp3", text:"Anyway! Chapter one. 70,000 years ago a random ape started yapping… and took over the entire planet. Lowkey iconic." },
     ],
   },
   {
-    id:"attached", title:"Attached", author:"Amir Levine & Rachel Heller",
-    cover:"assets/attached.jpg",
-    audio:"assets/attached.mp3",
-    talkAudio:"assets/attached-reply.mp3",
-    captions:[
-      {t:0.0, text:"There are three attachment styles."},
-      {t:3.5, text:"Secure, anxious, and avoidant."},
-    ],
-    replyCaps:[
-      {t:0.0, text:"Which of those sounds most like you?"},
+    id:"atomic", title:"Atomic Habits", author:"James Clear", cover:"assets/atomic-habits.jpg",
+    clips:[
+      { text:"You do not rise to the level of your goals — you fall to the level of your systems." },
+      { text:"So where would a tiny 1% change fit today?" },
     ],
   },
   {
-    id:"thinking", title:"Thinking, Fast and Slow", author:"Daniel Kahneman",
-    cover:"assets/thinking-fast.jpg",
-    audio:"assets/thinking.mp3",
-    talkAudio:"assets/thinking-reply.mp3",
-    captions:[
-      {t:0.0, text:"System 1 is fast, intuitive, automatic."},
-      {t:4.0, text:"System 2 is slow, deliberate, effortful."},
-    ],
-    replyCaps:[
-      {t:0.0, text:"When did you last let System 1 decide for you?"},
+    id:"attached", title:"Attached", author:"Amir Levine & Rachel Heller", cover:"assets/attached.jpg",
+    clips:[
+      { text:"There are three attachment styles: secure, anxious, and avoidant." },
+      { text:"Which of those sounds most like you?" },
     ],
   },
   {
-    id:"power", title:"The 48 Laws of Power", author:"Robert Greene",
-    cover:"assets/48-laws.jpg",
-    audio:"assets/power.mp3",
-    talkAudio:"assets/power-reply.mp3",
-    captions:[
-      {t:0.0, text:"Law 1: Never outshine the master."},
-      {t:4.0, text:"Make those above you feel comfortably superior."},
+    id:"thinking", title:"Thinking, Fast and Slow", author:"Daniel Kahneman", cover:"assets/thinking-fast.jpg",
+    clips:[
+      { text:"System 1 is fast and intuitive. System 2 is slow and deliberate." },
+      { text:"When did you last let System 1 decide for you?" },
     ],
-    replyCaps:[
-      {t:0.0, text:"Where in your life is that law playing out?"},
+  },
+  {
+    id:"power", title:"The 48 Laws of Power", author:"Robert Greene", cover:"assets/48-laws.jpg",
+    clips:[
+      { text:"Law 1: Never outshine the master." },
+      { text:"Where in your life is that law playing out?" },
     ],
   },
   // blank placeholder slot — fill in later
@@ -466,17 +451,32 @@ BOOKS.forEach((book,i)=>{
 /* ============================================================
    PLAYER LOGIC
    ============================================================ */
-let current=null, narration=null, reply=null;
+let current=null, clipIndex=0;
+const audioEl = new Audio();
 const coverWrap=$("#coverWrap"), captionEl=$("#caption");
 const talkBtn=$("#talkBtn"), micBtn=$("#micBtn"), closeBtn=$("#closeBtn");
 
 function setScreen(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.id===id)); }
 function setTalkingAnim(on){ player.classList.toggle("is-talking", on); }
+function stopAudio(){ audioEl.pause(); audioEl.onended=null; }
+
+/* One reusable <audio> element. iOS Safari only lets audio play if it was
+   unlocked inside a real tap, so we prime this element on the book tap
+   (the clip itself plays later, after the countdown). */
+function primeAudio(){
+  const first = current.clips && current.clips[0];
+  if(first && first.src) audioEl.src = first.src;
+  audioEl.muted = true;
+  const p = audioEl.play();
+  if(p) p.then(()=>{ audioEl.pause(); audioEl.currentTime=0; audioEl.muted=false; })
+         .catch(()=>{ audioEl.muted=false; });
+}
 
 function openBook(i){
   current = BOOKS[i];
   coverWrap.innerHTML = "";
   coverWrap.appendChild(coverEl(current));
+  primeAudio();           // unlock audio within the user gesture
   startCountdown();
 }
 
@@ -489,92 +489,75 @@ function startCountdown(){
 }
 
 function enterPlayer(){
-  app.dataset.state="podcast";
   setScreen("player");
-  startNarration();
-}
-
-/* ---- podcast: book talks ---- */
-function startNarration(){
-  if(narration) narration.pause();
-  narration = new Audio(current.audio);
-  narration.addEventListener("timeupdate", ()=>syncCaption(narration, current.captions, "podcast"));
-  narration.addEventListener("ended", ()=>setTalkingAnim(false));
-  setTalkingAnim(true);
-  syncCaption(narration, current.captions, "podcast");
-  narration.play().catch(()=>{});
-}
-
-function syncCaption(audio, caps, forState){
-  if(app.dataset.state!==forState) return;
-  if(!caps || !caps.length) return;
-  let txt = caps[0].text;
-  for(const c of caps){ if(c.t<=audio.currentTime) txt=c.text; else break; }
-  captionEl.textContent = txt;
+  playClip(0);                       // book speaks its opening line on entry
 }
 
 /* ============================================================
-   TALK FLOW:  podcast --Talk--> listening --mic--> responding
-               responding --mic--> listening
-               (any) --X--> podcast
+   CONVERSATION ENGINE
+   clip 0 auto-plays (podcast). Each clip end -> "Listening" (audience's
+   turn). Tap mic -> book speaks the next clip. Tap X -> end & exit.
    ============================================================ */
-talkBtn.addEventListener("click", goListening);
-micBtn.addEventListener("click", ()=>{
-  if(app.dataset.state==="listening") goResponding();   // I finished talking -> you reply
-  else goListening();                                   // talk to me again
-});
-closeBtn.addEventListener("click", exitTalk);
+function playClip(i){
+  clipIndex = i;
+  const clip = current.clips[i];
+  app.dataset.state = (i === 0) ? "podcast" : "responding";   // both = book speaking
+  captionEl.textContent = clip.text || "";
+  setTalkingAnim(true);
+  micBtn.classList.remove("live");
+  stopAudio();
+  if(clip.src){
+    if(audioEl.src.indexOf(clip.src) === -1) audioEl.src = clip.src;
+    audioEl.currentTime = 0;
+    // opening line (clip 0) keeps the Talk button; later clips auto-wait for the audience
+    audioEl.onended = (i === 0) ? ()=>setTalkingAnim(false) : goListening;
+    audioEl.play().catch(()=>{});
+  }
+}
 
 function goListening(){
-  app.dataset.state="listening";
-  if(narration) narration.pause();
-  if(reply){ reply.pause(); reply.currentTime=0; }
-  setTalkingAnim(false);                // book idle while it listens to me
+  app.dataset.state = "listening";     // book idle, audience speaks
+  stopAudio();
+  setTalkingAnim(false);
   micBtn.classList.add("live");
 }
 
-function goResponding(){
-  app.dataset.state="responding";
-  micBtn.classList.remove("live");
-  setTalkingAnim(true);                 // book talks back -> bounce + waveform
-  reply = new Audio(current.talkAudio);
-  reply.addEventListener("timeupdate", ()=>syncCaption(reply, current.replyCaps, "responding"));
-  reply.addEventListener("ended", goListening);   // done replying -> listen again
-  if(current.replyCaps && current.replyCaps.length) captionEl.textContent = current.replyCaps[0].text;
-  reply.play().catch(()=>{});
-}
-
-function exitTalk(){
-  if(reply){ reply.pause(); reply.currentTime=0; }
-  micBtn.classList.remove("live");
-  app.dataset.state="podcast";
-  setTalkingAnim(true);
-  if(narration){ narration.play().catch(()=>{}); }
-  syncCaption(narration, current.captions, "podcast");
-}
-
-$("#backBtn").addEventListener("click", ()=>{
-  if(narration) narration.pause();
-  if(reply) reply.pause();
+function exitToLibrary(){
+  stopAudio();
   setTalkingAnim(false);
-  app.dataset.state="podcast";
   micBtn.classList.remove("live");
+  app.dataset.state = "podcast";
+  clipIndex = 0;
   setScreen("library");
+}
+
+/* ---- buttons ---- */
+talkBtn.addEventListener("click", goListening);     // podcast: hand the mic to the audience
+closeBtn.addEventListener("click", exitToLibrary);  // X: end the conversation
+$("#backBtn").addEventListener("click", exitToLibrary);
+micBtn.addEventListener("click", ()=>{
+  if(app.dataset.state === "listening"){
+    if(clipIndex + 1 < current.clips.length) playClip(clipIndex + 1);  // audience done -> next line
+    // else: last line already played — stay listening (conversation over)
+  } else {
+    goListening();                     // book mid-reply -> stop, hand to audience
+  }
 });
 
-/* dev shortcut for previews: ?screen=player&state=podcast|listening|responding&book=0 */
+/* dev shortcut: ?screen=player&state=podcast|listening|responding&book=0&clip=0 */
 (function(){
   const q = new URLSearchParams(location.search);
   if(q.get("screen")!=="player") return;
   current = BOOKS[+(q.get("book")||0)];
   coverWrap.innerHTML=""; coverWrap.appendChild(coverEl(current));
   setScreen("player");
+  clipIndex = +(q.get("clip")||0);
   const st = q.get("state")||"podcast";
   app.dataset.state = st;
   setTalkingAnim(st==="podcast"||st==="responding");
   if(st==="listening") micBtn.classList.add("live");
-  if(st==="responding" && current.replyCaps) captionEl.textContent=current.replyCaps[0].text;
-  else if(current.captions) captionEl.textContent=current.captions[0].text;
+  const clip = current.clips && current.clips[clipIndex];
+  if(clip) captionEl.textContent = clip.text || "";
 })();
 </script>
 </body>
