@@ -76,8 +76,14 @@
     max-width:var(--content); margin-inline:auto;
   }
 
-  .book{cursor:pointer; border:0; background:transparent; padding:0; text-align:left; transition:transform .18s;}
+  .book{position:relative; cursor:pointer; border:0; background:transparent; padding:0; text-align:left; transition:transform .18s;}
   .book:active{transform:scale(.95);}
+  /* Girls / Guys version badge on the cover */
+  .tag{position:absolute; top:9px; left:9px; z-index:2; padding:3px 11px; border-radius:20px;
+       font-size:11px; font-weight:700; letter-spacing:.3px; color:#fff;
+       box-shadow:0 2px 6px rgba(0,0,0,.22);}
+  .tag.girls{background:#e85d8a;}
+  .tag.guys{background:#3b82c4;}
   .cover{
     width:100%; aspect-ratio:2/3;
     border-radius:12px; overflow:hidden;
@@ -364,11 +370,22 @@ const BOOKS = [
   },
   {
     id:"atomic", title:"Atomic Habits", author:"James Clear", cover:"assets/atomic-habits.jpg",
+    tag:"Girls",          // female-voice version
     talkPlaysNext:true,   // tap Talk -> book reacts first, then your turn
     clips:[
       { src:"assets/power-1.mp3", text:"Missing habits twice creates… a dangerous pattern. So focusing on tiny one percent enhancements in everything in life gives back more control. One percent improvement daily compounds to nearly thirty-seven times better performance over a year." },
       { src:"assets/power-2.mp3", text:"What? Looks like someone has questions again…" },
       { src:"assets/power-3b.mp3", text:"Ya, that's an interesting observation. As an AI book I don't really have the ability to cough or have sensation, nor would I have human emotion." },
+    ],
+  },
+  {
+    id:"atomic-guys", title:"Atomic Habits", author:"James Clear", cover:"assets/atomic-habits.jpg",
+    tag:"Guys",           // male-voice version
+    talkPlaysNext:true,
+    clips:[
+      { src:"assets/guy-1.mp3", text:"Missing habits twice creates… a dangerous pattern. So focusing on tiny one percent enhancements in everything in life gives back more control. One percent improvement daily compounds to nearly thirty-seven times better performance over a year." },
+      { src:"assets/guy-2.mp3", text:"What? Looks like someone has questions again…" },
+      { src:"assets/guy-3.mp3", text:"Ya, that's an interesting observation. As an AI book I don't really have the ability to cough or have sensation, nor would I have human emotion." },
     ],
   },
   {
@@ -457,6 +474,12 @@ BOOKS.forEach((book,i)=>{
   const btn = document.createElement("button");
   btn.className = "book";
   btn.appendChild(coverEl(book));
+  if(book.tag){
+    const tg = document.createElement("span");
+    tg.className = "tag " + book.tag.toLowerCase();
+    tg.textContent = book.tag;
+    btn.appendChild(tg);
+  }
   if(!book.blank){
     const h = document.createElement("h4"); h.textContent = book.title; btn.appendChild(h);
     const p = document.createElement("p"); p.textContent = book.author; btn.appendChild(p);
