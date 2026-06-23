@@ -386,6 +386,7 @@ const BOOKS = [
   },
   {
     id:"power", title:"The 48 Laws of Power", author:"Robert Greene", cover:"assets/48-laws.jpg",
+    talkPlaysNext:true,   // tap Talk -> book reacts first, then your turn
     clips:[
       { src:"assets/power-1.mp3", text:"Missing habits twice creates… a dangerous pattern. So focusing on tiny one percent enhancements in everything in life gives back more control. One percent improvement daily compounds to nearly thirty-seven times better performance over a year." },
       { src:"assets/power-2.mp3", text:"What? Looks like someone has questions again…" },
@@ -679,8 +680,10 @@ function showChunk(txt){
 }
 
 /* ---- buttons ---- */
-talkBtn.addEventListener("click", ()=>{             // book reacts with its next line, THEN it's your turn
-  if(clipIndex + 1 < current.clips.length) playClip(clipIndex + 1);
+talkBtn.addEventListener("click", ()=>{
+  // talkPlaysNext (48 Laws): book reacts with its next line first, then your turn.
+  // default (Sapiens, Attached): tapping Talk hands the turn straight to you.
+  if(current.talkPlaysNext && clipIndex + 1 < current.clips.length) playClip(clipIndex + 1);
   else goListening();
 });
 closeBtn.addEventListener("click", exitToLibrary);  // X: end the conversation
