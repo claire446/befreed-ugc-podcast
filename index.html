@@ -115,26 +115,32 @@
   .chev{font-size:30px;line-height:1;font-weight:300;}
 
   /* middle group: logo -> book -> transcript, tightly stacked & centered */
-  .player-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;--figH:clamp(290px,52vh,560px);}
+  .player-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;--figH:clamp(240px,44vh,470px);}
   .brand{display:flex;align-items:center;justify-content:center;margin-bottom:clamp(10px,2.4vmin,24px);}
   .brand .logo-img{height:clamp(28px,5.2vmin,46px);width:auto;display:block;}
 
-  .stage{position:relative;display:flex;align-items:flex-end;justify-content:center;width:100%;}
+  .stage{position:relative;display:flex;align-items:center;justify-content:center;width:100%;}
 
-  /* background waveform — bar heights driven by audio amplitude (JS) */
-  .wave{position:absolute;top:46%;transform:translateY(-50%);display:flex;align-items:center;gap:clamp(6px,1.6vmin,12px);pointer-events:none;z-index:0;}
+  /* background waveform (CSS equalizer) */
+  .wave{position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:clamp(6px,1.6vmin,12px);pointer-events:none;z-index:0;}
   .wave.left{left:clamp(8px,3vw,42px);} .wave.right{right:clamp(8px,3vw,42px);}
-  .wave .bar{width:clamp(6px,1.5vmin,11px);height:18px;border-radius:7px;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.07);transition:height .07s linear;}
+  .wave .bar{width:clamp(6px,1.5vmin,11px);height:clamp(20px,5vmin,34px);border-radius:7px;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.07);}
+  @keyframes eqbar{0%,100%{height:clamp(20px,5vmin,34px)}50%{height:clamp(62px,15vmin,118px)}}
+  .is-talking .wave .bar{animation:eqbar 1s ease-in-out infinite;}
+  .wave .bar:nth-child(1){animation-duration:1.1s;animation-delay:0s}
+  .wave .bar:nth-child(2){animation-duration:.85s;animation-delay:.18s}
+  .wave .bar:nth-child(3){animation-duration:1.25s;animation-delay:.05s}
+  .wave .bar:nth-child(4){animation-duration:.95s;animation-delay:.28s}
 
-  /* character cover (static image, gentle voice-driven bob via JS) */
-  .figure{position:relative;z-index:1;height:var(--figH);transform-origin:bottom center;will-change:transform;}
-  .figure .cover3d{position:absolute;bottom:0;left:50%;transform:translateX(-50%);height:100%;width:auto;}
-  /* fallback flat cover for books without a character */
+  /* 2D book cover with the original constant bob */
+  .figure{position:relative;z-index:1;height:var(--figH);transform-origin:center center;will-change:transform;}
   .figure .cover{height:100%;aspect-ratio:2/3;border-radius:12px;overflow:hidden;box-shadow:0 22px 44px rgba(0,0,0,.26);}
   .figure .cover img{width:100%;height:100%;object-fit:cover;display:block;}
+  @keyframes bob{0%{transform:scale(.94)}50%{transform:scale(1.08)}100%{transform:scale(.94)}}
+  .is-talking .figure{animation:bob 1.05s ease-in-out infinite;}
 
   /* caption: left-aligned with the character, word-pop */
-  .capwrap{width:calc(var(--figH)*0.64);max-width:80%;margin:clamp(8px,2vmin,20px) auto 0;min-height:clamp(66px,11vmin,108px);padding-left:2%;}
+  .capwrap{display:none;}   /* transcript hidden for now */
   .caption{
     text-align:left; font-family:Georgia,'Times New Roman',serif;
     font-size:clamp(22px,5.4vmin,38px); font-weight:700; line-height:1.18; color:var(--ink);
@@ -472,13 +478,8 @@ function stopAudio(){ audioEl.pause(); audioEl.onended=null; }
 /* build the player figure: animated character (3 mouth frames) or a flat cover */
 function buildFigure(book){
   figureEl.innerHTML = "";
-  if(book.faces){
-    const img = new Image();          // single static character cover (no mouth animation)
-    img.className = "cover3d"; img.alt=""; img.src = book.faces.closed;
-    figureEl.appendChild(img);
-  }else{
-    figureEl.appendChild(coverEl(book));
-  }
+  figureEl.style.transform = "";
+  figureEl.appendChild(coverEl(book));   // flat 2D cover
 }
 
 /* ---- Web Audio: read the playing clip's loudness to drive mouth + bounce + bars ---- */
@@ -538,8 +539,6 @@ function primeAudio(){
 function openBook(i){
   current = BOOKS[i];
   buildFigure(current);
-  setupAudioGraph();
-  if(actx && actx.state==="suspended") actx.resume();
   primeAudio();           // unlock audio within the user gesture
   startCountdown();
 }
@@ -554,7 +553,6 @@ function startCountdown(){
 
 function enterPlayer(){
   setScreen("player");
-  startFaceLoop();
   playClip(0);                       // book speaks its opening line on entry
 }
 
@@ -570,12 +568,11 @@ function playClip(i){
   setTalkingAnim(true);
   micBtn.classList.remove("live");
   stopAudio();
-  startCaption(clip);                  // word-pop captions, synced to this clip
   if(clip.src){
     if(audioEl.src.indexOf(clip.src) === -1) audioEl.src = clip.src;
     audioEl.currentTime = 0;
     // opening line (clip 0) keeps the Talk button; later clips auto-wait for the audience
-    audioEl.onended = (i === 0) ? ()=>{ setTalkingAnim(false); stopCaption(); } : goListening;
+    audioEl.onended = (i === 0) ? ()=>setTalkingAnim(false) : goListening;
     audioEl.play().catch(()=>{});
   }
 }
@@ -591,7 +588,6 @@ function goListening(){
 function exitToLibrary(){
   stopAudio();
   stopCaption();
-  stopFaceLoop();
   setTalkingAnim(false);
   micBtn.classList.remove("live");
   app.dataset.state = "podcast";
