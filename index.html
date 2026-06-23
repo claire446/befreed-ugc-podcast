@@ -528,10 +528,15 @@ function startFaceLoop(){ if(!rafFace) rafFace = requestAnimationFrame(faceLoop)
 function stopFaceLoop(){ if(rafFace){ cancelAnimationFrame(rafFace); rafFace=0; } if(figureEl) figureEl.style.transform=""; }
 
 /* One reusable <audio> element. iOS Safari only lets audio play if it was
-   unlocked inside a real tap, so we prime this element on the book tap. */
+   unlocked inside a real tap, so we prime it ONCE on the first book tap.
+   (Re-priming on every entry could pause the real playback.) */
+let primed = false;
 function primeAudio(){
+  if(primed) return;
   const first = current.clips && current.clips[0];
-  if(first && first.src) audioEl.src = first.src;
+  if(!first || !first.src) return;     // nothing to unlock with yet
+  primed = true;
+  audioEl.src = first.src;
   audioEl.muted = true;
   const p = audioEl.play();
   if(p) p.then(()=>{ audioEl.pause(); audioEl.currentTime=0; audioEl.muted=false; })
@@ -571,8 +576,8 @@ function playClip(i){
   micBtn.classList.remove("live");
   stopAudio();
   if(clip.src){
-    if(audioEl.src.indexOf(clip.src) === -1) audioEl.src = clip.src;
-    audioEl.currentTime = 0;
+    audioEl.muted = false;
+    audioEl.src = clip.src;          // always (re)load so it reliably restarts
     // opening line (clip 0) keeps the Talk button; later clips auto-wait for the audience
     audioEl.onended = (i === 0) ? ()=>setTalkingAnim(false) : goListening;
     audioEl.play().catch(()=>{});
