@@ -165,8 +165,11 @@
 
   .caption{
     display:flex; align-items:flex-start; justify-content:center; text-align:center;
-    font-size:clamp(19px,4.4vmin,30px); line-height:1.36; color:var(--ink);
+    font-size:clamp(23px,6vmin,40px); font-weight:700; line-height:1.25; color:var(--ink);
+    will-change:transform,opacity;
   }
+  @keyframes capPop{0%{opacity:0;transform:scale(.84)}55%{opacity:1;transform:scale(1)}100%{transform:scale(1)}}
+  .caption.pop{animation:capPop .2s ease;}
 
   .bottom{flex:0 0 auto;padding:8px 28px max(30px, env(safe-area-inset-bottom));display:flex;align-items:center;justify-content:center;}
   .talk-btn{
@@ -502,15 +505,15 @@ function playClip(i){
   clipIndex = i;
   const clip = current.clips[i];
   app.dataset.state = (i === 0) ? "podcast" : "responding";   // both = book speaking
-  captionEl.textContent = clip.text || "";
   setTalkingAnim(true);
   micBtn.classList.remove("live");
   stopAudio();
+  startCaption(clip);                  // word-pop captions, synced to this clip
   if(clip.src){
     if(audioEl.src.indexOf(clip.src) === -1) audioEl.src = clip.src;
     audioEl.currentTime = 0;
     // opening line (clip 0) keeps the Talk button; later clips auto-wait for the audience
-    audioEl.onended = (i === 0) ? ()=>setTalkingAnim(false) : goListening;
+    audioEl.onended = (i === 0) ? ()=>{ setTalkingAnim(false); stopCaption(); } : goListening;
     audioEl.play().catch(()=>{});
   }
 }
@@ -518,17 +521,87 @@ function playClip(i){
 function goListening(){
   app.dataset.state = "listening";     // book idle, audience speaks
   stopAudio();
+  stopCaption();
   setTalkingAnim(false);
   micBtn.classList.add("live");
 }
 
 function exitToLibrary(){
   stopAudio();
+  stopCaption();
   setTalkingAnim(false);
   micBtn.classList.remove("live");
   app.dataset.state = "podcast";
   clipIndex = 0;
   setScreen("library");
+}
+
+/* ============================================================
+   CAPTION ENGINE — Option A: sentence-aware 2–3 word pops, driven by
+   the clip's real playback progress (currentTime / duration). No word
+   timestamps needed; punctuation adds pause weight so dramatic beats
+   (??, ., !) hold a touch longer.
+   ============================================================ */
+function groupSizes(n){                // split a sentence into 2–3 word groups, no orphans
+  const s=[];
+  while(n>0){
+    if(n===1){ if(s.length) s[s.length-1]++; else s.push(1); n=0; }
+    else if(n===2){ s.push(2); n=0; }
+    else if(n===3){ s.push(3); n=0; }
+    else if(n===4){ s.push(2); n=2; }
+    else { s.push(3); n-=3; }
+  }
+  return s;
+}
+function buildChunks(text){
+  const sentences = text.match(/[^.!?…]+[.!?…]*/g) || [text];   // keep terminal punctuation
+  const chunks=[];
+  sentences.forEach(seg=>{
+    const ws = seg.trim().split(/\s+/).filter(Boolean);
+    if(!ws.length) return;
+    let k=0;
+    groupSizes(ws.length).forEach(sz=>{ chunks.push(ws.slice(k,k+sz)); k+=sz; });
+  });
+  const weights = chunks.map(c=>{
+    let w=0; c.forEach(word=>{ w += (word.match(/[A-Za-z0-9]/g)||[]).length + 1; });
+    const last=c[c.length-1];
+    if(/\?\?|!!/.test(last)) w += 14;
+    else if(/[?!]$/.test(last)) w += 9;
+    else if(/[.…]$/.test(last)) w += 7;
+    else if(/,$/.test(last)) w += 3;
+    return w;
+  });
+  const totalW = weights.reduce((a,b)=>a+b,0) || 1;
+  const cum=[]; let acc=0;
+  for(let i=0;i<weights.length;i++){ cum.push(acc/totalW); acc+=weights[i]; }
+  cum.push(1);
+  return { text: chunks.map(c=>c.join(" ")), cum };
+}
+let capData=null, capRaf=0, capLastIdx=-1;
+function startCaption(clip){
+  stopCaption();
+  capLastIdx=-1;
+  if(clip && clip.text && clip.src){
+    capData = buildChunks(clip.text);
+    capLoop();
+  }else{
+    capData=null;
+    showChunk(clip ? (clip.text||"") : "");
+  }
+}
+function stopCaption(){ if(capRaf){ cancelAnimationFrame(capRaf); capRaf=0; } }
+function capLoop(){
+  capRaf = requestAnimationFrame(capLoop);
+  if(!capData) return;
+  const dur = audioEl.duration;
+  const prog = (dur && isFinite(dur)) ? Math.min(0.9999, audioEl.currentTime/dur) : 0;
+  let idx=0;
+  for(let i=0;i<capData.text.length;i++){ if(prog>=capData.cum[i] && prog<capData.cum[i+1]){ idx=i; break; } }
+  if(idx!==capLastIdx){ showChunk(capData.text[idx]); capLastIdx=idx; }
+}
+function showChunk(txt){
+  captionEl.textContent = txt;
+  captionEl.classList.remove("pop"); void captionEl.offsetWidth; captionEl.classList.add("pop");
 }
 
 /* ---- buttons ---- */
@@ -557,7 +630,7 @@ micBtn.addEventListener("click", ()=>{
   setTalkingAnim(st==="podcast"||st==="responding");
   if(st==="listening") micBtn.classList.add("live");
   const clip = current.clips && current.clips[clipIndex];
-  if(clip) captionEl.textContent = clip.text || "";
+  if(clip && clip.text){ const cd=buildChunks(clip.text); captionEl.textContent = cd.text[+(q.get("chunk")||0)] || cd.text[0]; }
 })();
 </script>
 </body>
