@@ -679,7 +679,10 @@ function showChunk(txt){
 }
 
 /* ---- buttons ---- */
-talkBtn.addEventListener("click", goListening);     // podcast: hand the mic to the audience
+talkBtn.addEventListener("click", ()=>{             // book reacts with its next line, THEN it's your turn
+  if(clipIndex + 1 < current.clips.length) playClip(clipIndex + 1);
+  else goListening();
+});
 closeBtn.addEventListener("click", exitToLibrary);  // X: end the conversation
 $("#backBtn").addEventListener("click", exitToLibrary);
 micBtn.addEventListener("click", ()=>{
