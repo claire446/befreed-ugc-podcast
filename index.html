@@ -159,6 +159,7 @@
   /* "Now your turn" screen — fades over the book while the audience speaks */
   #yourturn{
     position:absolute; inset:0; z-index:6;
+    max-width:none;                 /* override .screen>* cap so it fills the WHOLE screen, not just 760px */
     background:linear-gradient(180deg,var(--bg-1),var(--bg-2));
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:clamp(14px,3vmin,26px);
     opacity:0; visibility:hidden; transition:opacity .45s ease;
