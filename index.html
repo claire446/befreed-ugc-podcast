@@ -341,7 +341,7 @@
           <div class="yt-eq"><i></i><i></i><i></i><i></i><i></i></div>
         </div>
         <div class="yt-title">Now your turn</div>
-        <div class="yt-hint">BeFreed is listening… tap the mic when you're done</div>
+        <div class="yt-hint">Tap the mic when you're done</div>
       </div>
 
       <div class="bottom">
@@ -569,16 +569,16 @@ function faceLoop(ts){
     const a = liveAmp();
     amp = (a >= 0) ? a : Math.max(0, (Math.sin(ts*0.013)+Math.sin(ts*0.031)*0.7+Math.sin(ts*0.07)*0.4)/2.1);
   }
-  ampS += (amp - ampS) * 0.45;
+  ampS += (amp - ampS) * 0.25;        // heavier smoothing -> no jitter
   const vmin = Math.min(window.innerWidth, window.innerHeight) / 100;
   if(figureEl){
-    // clean continuous bigger<->smaller pulse; the voice only changes how DEEP it pulses,
-    // and the depth eases back to 0 (scale 1) when not talking — so it never sticks.
-    bouncePhase += 0.12;
-    const targetDepth = speaking ? (0.035 + Math.min(0.10, ampS * 0.20)) : 0;
-    depthS += (targetDepth - depthS) * 0.10;
+    // smooth, steady bigger<->smaller pulse; voice gently deepens it; depth eases in/out
+    // so it never jumps or sticks.
+    bouncePhase += 0.10;              // ~1s per pulse, graceful
+    const targetDepth = speaking ? (0.05 + Math.min(0.07, ampS * 0.15)) : 0;
+    depthS += (targetDepth - depthS) * 0.05;
     const s = 1 + Math.sin(bouncePhase) * depthS;
-    figureEl.style.transform = `scale(${s.toFixed(3)})`;
+    figureEl.style.transform = `scale(${s.toFixed(4)})`;
   }
   for(let i=0;i<waveBars.length;i++){
     const v = speaking ? Math.max(0.1, ampS*(0.8+0.55*Math.sin(ts*0.012+i*1.3))) : 0.1;
