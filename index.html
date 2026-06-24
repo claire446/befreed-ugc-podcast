@@ -145,6 +145,9 @@
   .figure .cover img{width:100%;height:100%;object-fit:cover;display:block;}
   @keyframes bob{0%{transform:scale(.94)}50%{transform:scale(1.08)}100%{transform:scale(.94)}}
   .is-talking .figure{animation:bob 1.05s ease-in-out infinite;}
+  /* when audio amplitude drives the motion (JS), turn off the constant CSS loops */
+  .audio-react.is-talking .figure{animation:none;}
+  .audio-react .wave .bar{animation:none;}
 
   /* caption: left-aligned with the character, word-pop */
   .capwrap{display:none;}   /* transcript hidden for now */
@@ -155,6 +158,18 @@
   }
   @keyframes capPop{0%{opacity:0;transform:translateY(6px) scale(.96)}60%{opacity:1;transform:translateY(0) scale(1)}100%{transform:scale(1)}}
   .caption.pop{animation:capPop .2s ease;}
+
+  /* "BeFreed is talking…" status — shown only while the book is speaking */
+  .talk-status{display:none; align-items:baseline; justify-content:center; gap:1px;
+    margin-top:clamp(8px,2vmin,18px);
+    font-family:Georgia,"Times New Roman",serif; font-style:italic;
+    font-size:clamp(16px,4.2vmin,26px); color:var(--ink-soft);}
+  .talk-status .ts-name{font-style:normal; font-weight:700; color:var(--ink); margin-right:6px;}
+  .is-talking .talk-status{display:flex;}
+  .talk-status .dots i{animation:tdot 1.3s infinite;}
+  .talk-status .dots i:nth-child(2){animation-delay:.18s}
+  .talk-status .dots i:nth-child(3){animation-delay:.36s}
+  @keyframes tdot{0%,70%,100%{opacity:.2}35%{opacity:1}}
 
   /* "Now your turn" screen — fades over the book while the audience speaks */
   #yourturn{
@@ -308,6 +323,7 @@
         </div>
 
         <div class="capwrap"><div class="caption serif" id="caption"></div></div>
+        <div class="talk-status"><span class="ts-name">BeFreed</span>is talking<span class="dots"><i>.</i><i>.</i><i>.</i></span></div>
       </div>
 
       <div id="yourturn">
@@ -543,13 +559,15 @@ function faceLoop(ts){
     const a = liveAmp();
     amp = (a >= 0) ? a : Math.max(0, (Math.sin(ts*0.013)+Math.sin(ts*0.031)*0.7+Math.sin(ts*0.07)*0.4)/2.1);
   }
-  ampS += (amp - ampS) * 0.4;
-  if(figureEl){                       // gentle voice-driven bob (no mouth animation)
-    figureEl.style.transform = `translateY(${(-ampS*6).toFixed(1)}px) scale(${(1+ampS*0.03).toFixed(3)})`;
+  ampS += (amp - ampS) * 0.45;
+  const vmin = Math.min(window.innerWidth, window.innerHeight) / 100;
+  if(figureEl){                       // amplitude-driven "一缩一放": louder voice = bigger pulse
+    const s = 0.95 + Math.min(0.17, ampS * 0.30);
+    figureEl.style.transform = `scale(${s.toFixed(3)})`;
   }
   for(let i=0;i<waveBars.length;i++){
-    const v = speaking ? Math.max(0.12, ampS*(0.7+0.5*Math.sin(ts*0.012+i*1.3))) : 0.12;
-    waveBars[i].style.height = (16 + v*86).toFixed(0)+"px";
+    const v = speaking ? Math.max(0.1, ampS*(0.8+0.55*Math.sin(ts*0.012+i*1.3))) : 0.1;
+    waveBars[i].style.height = (3.4*vmin + v*13*vmin).toFixed(1)+"px";
   }
 }
 function startFaceLoop(){ if(!rafFace) rafFace = requestAnimationFrame(faceLoop); }
@@ -574,6 +592,8 @@ function primeAudio(){
 function openBook(i){
   current = BOOKS[i];
   buildFigure(current);
+  setupAudioGraph();                                   // analyser for amplitude-driven motion
+  if(actx && actx.state === "suspended") actx.resume();
   primeAudio();           // unlock audio within the user gesture
   startCountdown();
 }
@@ -604,11 +624,16 @@ function playClip(i){
   micBtn.classList.remove("live");
   stopAudio();
   if(clip.src){
+    player.classList.add("audio-react");   // JS amplitude drives bounce + bars
+    startFaceLoop();
     audioEl.muted = false;
     audioEl.src = clip.src;          // always (re)load so it reliably restarts
     // opening line (clip 0) keeps the Talk button; later clips auto-wait for the audience
     audioEl.onended = (i === 0) ? ()=>setTalkingAnim(false) : goListening;
     audioEl.play().catch(()=>{});
+  }else{
+    player.classList.remove("audio-react");  // no audio -> fall back to the CSS bob
+    stopFaceLoop();
   }
 }
 
@@ -616,6 +641,7 @@ function goListening(){
   app.dataset.state = "listening";     // book idle, audience speaks
   stopAudio();
   stopCaption();
+  stopFaceLoop();
   setTalkingAnim(false);
   micBtn.classList.add("live");
 }
@@ -623,6 +649,8 @@ function goListening(){
 function exitToLibrary(){
   stopAudio();
   stopCaption();
+  stopFaceLoop();
+  player.classList.remove("audio-react");
   setTalkingAnim(false);
   micBtn.classList.remove("live");
   app.dataset.state = "podcast";
