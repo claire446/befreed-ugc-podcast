@@ -176,20 +176,29 @@
     position:absolute; inset:0; z-index:6;
     max-width:none;                 /* override .screen>* cap so it fills the WHOLE screen, not just 760px */
     background:linear-gradient(180deg,var(--bg-1),var(--bg-2));
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:clamp(14px,3vmin,26px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:clamp(22px,4.4vmin,38px);
     opacity:0; visibility:hidden; transition:opacity .45s ease;
     padding-bottom:clamp(120px,22vh,210px);
   }
   .app[data-state="listening"] #yourturn{opacity:1; visibility:visible;}
-  .yt-rings{position:relative;width:clamp(130px,32vmin,200px);height:clamp(130px,32vmin,200px);display:flex;align-items:center;justify-content:center;}
-  .yt-rings span{position:absolute;inset:0;border-radius:50%;border:2px solid var(--orange-2);opacity:0;animation:ytring 2.4s ease-out infinite;}
-  .yt-rings span:nth-child(2){animation-delay:.8s}
-  .yt-rings span:nth-child(3){animation-delay:1.6s}
-  @keyframes ytring{0%{transform:scale(.42);opacity:.45}100%{transform:scale(1.05);opacity:0}}
-  .yt-mic{width:clamp(82px,20vmin,120px);height:clamp(82px,20vmin,120px);border-radius:50%;background:linear-gradient(180deg,var(--orange-1),var(--orange-2));display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 16px 36px rgba(255,90,0,.42), inset 0 1px 0 rgba(255,255,255,.35);}
-  .yt-mic svg{width:44%;height:44%;}
-  .yt-title{font-family:Georgia,serif;font-weight:700;font-size:clamp(27px,7.2vmin,46px);color:var(--ink);}
-  .yt-hint{font-size:clamp(13px,3.6vmin,17px);color:var(--ink-soft);}
+  /* soft "listening" orb with a live equalizer + gentle outward rings */
+  .yt-orb{position:relative; width:clamp(128px,30vmin,180px); height:clamp(128px,30vmin,180px); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(155deg,#ffa24d,#ff5a00);
+    box-shadow:0 22px 54px rgba(255,90,0,.30), inset 0 2px 5px rgba(255,255,255,.45);}
+  .yt-ring{position:absolute; inset:0; border-radius:50%; border:1.5px solid var(--orange-2); opacity:0; animation:ytring 2.8s ease-out infinite;}
+  .yt-ring:nth-child(2){animation-delay:1.4s;}
+  @keyframes ytring{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.55);opacity:0}}
+  .yt-eq{position:relative; z-index:2; display:flex; align-items:center; gap:clamp(4px,1.3vmin,8px); height:34%;}
+  .yt-eq i{width:clamp(5px,1.5vmin,9px); height:100%; background:#fff; border-radius:8px; transform-origin:center; animation:yteq 1.1s ease-in-out infinite;}
+  .yt-eq i:nth-child(1){animation-delay:0s}
+  .yt-eq i:nth-child(2){animation-delay:.18s}
+  .yt-eq i:nth-child(3){animation-delay:.36s}
+  .yt-eq i:nth-child(4){animation-delay:.24s}
+  .yt-eq i:nth-child(5){animation-delay:.06s}
+  @keyframes yteq{0%,100%{transform:scaleY(.32)}50%{transform:scaleY(1)}}
+  .yt-title{font-weight:800; font-size:clamp(27px,7vmin,44px); letter-spacing:-.6px; color:var(--ink);}
+  .yt-hint{font-size:clamp(14px,3.6vmin,18px); color:var(--ink-soft); max-width:300px; text-align:center; line-height:1.45;}
 
   .bottom{flex:0 0 auto;position:relative;z-index:10;padding:8px 28px max(30px, env(safe-area-inset-bottom));display:flex;align-items:center;justify-content:center;}
   .talk-btn{
@@ -327,11 +336,12 @@
       </div>
 
       <div id="yourturn">
-        <div class="yt-rings"><span></span><span></span><span></span>
-          <div class="yt-mic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <div class="yt-orb">
+          <span class="yt-ring"></span><span class="yt-ring"></span>
+          <div class="yt-eq"><i></i><i></i><i></i><i></i><i></i></div>
         </div>
         <div class="yt-title">Now your turn</div>
-        <div class="yt-hint">Tap the mic when you're done</div>
+        <div class="yt-hint">BeFreed is listening… tap the mic when you're done</div>
       </div>
 
       <div class="bottom">
@@ -411,7 +421,7 @@ const BOOKS = [
     clips:[
       { src:"assets/script1-1.mp3", text:"OH you wanna read me NOW?? After THREE YEARS?? You left me on read longer than your situationship. That's delulu. Lock in!" },
       { src:"assets/script1-2.mp3", text:"You SHOULD be. Minus ten thousand aura. No cap." },
-      { src:"assets/script1-3.mp3", text:"Anyway! Chapter one. 70,000 years ago a random ape started yapping… and took over the entire planet. Lowkey iconic." },
+      { src:"assets/attached-3.mp3", text:"" },
     ],
   },
   {
@@ -550,7 +560,7 @@ function liveAmp(){
   for(let i=2;i<n;i++) s += freqData[i];
   return Math.min(1, (s/(n-2))/170);
 }
-let rafFace=0, ampS=0;
+let rafFace=0, ampS=0, bouncePhase=0, depthS=0;
 function faceLoop(ts){
   rafFace = requestAnimationFrame(faceLoop);
   const speaking = player.classList.contains("is-talking");
@@ -561,8 +571,13 @@ function faceLoop(ts){
   }
   ampS += (amp - ampS) * 0.45;
   const vmin = Math.min(window.innerWidth, window.innerHeight) / 100;
-  if(figureEl){                       // amplitude-driven "一缩一放": louder voice = bigger pulse
-    const s = 0.95 + Math.min(0.17, ampS * 0.30);
+  if(figureEl){
+    // clean continuous bigger<->smaller pulse; the voice only changes how DEEP it pulses,
+    // and the depth eases back to 0 (scale 1) when not talking — so it never sticks.
+    bouncePhase += 0.12;
+    const targetDepth = speaking ? (0.035 + Math.min(0.10, ampS * 0.20)) : 0;
+    depthS += (targetDepth - depthS) * 0.10;
+    const s = 1 + Math.sin(bouncePhase) * depthS;
     figureEl.style.transform = `scale(${s.toFixed(3)})`;
   }
   for(let i=0;i<waveBars.length;i++){
