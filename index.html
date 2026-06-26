@@ -85,6 +85,7 @@
        text-transform:uppercase; box-shadow:0 4px 12px rgba(0,0,0,.3);}
   .tag.girls{background:#e8458a;}
   .tag.guys{background:#2f7fd1;}
+  .tag.car-crash{background:#c0392b;}
   .cover{
     width:100%; aspect-ratio:2/3;
     border-radius:12px; overflow:hidden;
@@ -160,16 +161,27 @@
   .caption.pop{animation:capPop .2s ease;}
 
   /* "BeFreed is talking…" status — shown only while the book is speaking */
-  .talk-status{display:none; align-items:baseline; justify-content:center; gap:1px;
-    margin-top:clamp(8px,2vmin,18px);
-    font-family:Georgia,"Times New Roman",serif; font-style:italic;
-    font-size:clamp(16px,4.2vmin,26px); color:var(--ink-soft);}
-  .talk-status .ts-name{font-style:normal; font-weight:700; color:var(--ink); margin-right:6px;}
+  .talk-status{display:none; justify-content:center; align-items:center; margin-top:clamp(10px,2.4vmin,20px);}
   .is-talking .talk-status{display:flex;}
-  .talk-status .dots i{animation:tdot 1.3s infinite;}
-  .talk-status .dots i:nth-child(2){animation-delay:.18s}
-  .talk-status .dots i:nth-child(3){animation-delay:.36s}
-  @keyframes tdot{0%,70%,100%{opacity:.2}35%{opacity:1}}
+  .talk-status .ti{display:none; align-items:center;}
+  #player[data-ind="a"] .ti-a, #player[data-ind="b"] .ti-b,
+  #player[data-ind="c"] .ti-c, #player[data-ind="d"] .ti-d{display:inline-flex;}
+  @keyframes tibar{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+  @keyframes tidot{0%,70%,100%{opacity:.2}35%{opacity:1}}
+  .ti-bars{display:inline-flex;align-items:center;gap:3px;height:clamp(13px,3vmin,18px);}
+  .ti-bars i{width:clamp(3px,.85vmin,4px);height:100%;border-radius:3px;transform-origin:center;background:var(--orange-2);animation:tibar 1s ease-in-out infinite;}
+  .ti-bars i:nth-child(2){animation-delay:.15s}.ti-bars i:nth-child(3){animation-delay:.3s}.ti-bars i:nth-child(4){animation-delay:.45s}
+  .ti-dots i{animation:tidot 1.3s infinite;}
+  .ti-dots i:nth-child(2){animation-delay:.2s}.ti-dots i:nth-child(3){animation-delay:.4s}
+  .ti-a{gap:9px;background:#fff;padding:clamp(7px,1.7vmin,10px) clamp(14px,3.2vmin,18px);border-radius:30px;box-shadow:0 6px 16px rgba(0,0,0,.08);font-size:clamp(14px,3.7vmin,17px);}
+  .ti-a .lbl{color:var(--ink-soft);}.ti-a .lbl b{color:var(--ink);font-weight:700;}.ti-a .ti-dots{color:var(--orange-2);margin-left:-3px;}
+  .ti-b{gap:8px;font-family:Georgia,serif;font-size:clamp(16px,4.4vmin,22px);}
+  .ti-b .lbl{font-style:italic;color:var(--ink-soft);}.ti-b .lbl b{font-style:normal;font-weight:700;color:var(--orange-2);margin-right:4px;}.ti-b .ti-dots{color:var(--ink-soft);}
+  .ti-c{gap:10px;background:#fff;padding:clamp(8px,1.9vmin,10px) clamp(15px,3.4vmin,18px);border-radius:30px;box-shadow:0 8px 22px rgba(255,90,0,.16);border:1px solid rgba(255,90,0,.18);font-size:clamp(14px,3.7vmin,17px);color:var(--ink);font-weight:600;}
+  .ti-c .orb{width:clamp(20px,5vmin,26px);height:clamp(20px,5vmin,26px);border-radius:50%;background:linear-gradient(160deg,#ffa24d,var(--orange-2));display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(255,90,0,.4);}
+  .ti-c .orb .ti-bars{height:46%;gap:2px;}.ti-c .orb .ti-bars i{width:2px;background:#fff;}.ti-c .ti-dots{color:var(--orange-2);margin-left:-4px;}
+  .ti-d{gap:10px;font-size:clamp(11px,2.9vmin,13px);font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--ink-soft);}
+  .ti-d b{color:var(--orange-2);}
 
   /* "Now your turn" screen — fades over the book while the audience speaks */
   #yourturn{
@@ -332,7 +344,12 @@
         </div>
 
         <div class="capwrap"><div class="caption serif" id="caption"></div></div>
-        <div class="talk-status"><span class="ts-name">BeFreed</span>is talking<span class="dots"><i>.</i><i>.</i><i>.</i></span></div>
+        <div class="talk-status">
+          <div class="ti ti-a"><span class="ti-bars"><i></i><i></i><i></i><i></i></span><span class="lbl"><b>BeFreed</b> is talking</span><span class="ti-dots"><i>.</i><i>.</i><i>.</i></span></div>
+          <div class="ti ti-b"><span class="ti-bars"><i></i><i></i><i></i><i></i></span><span class="lbl"><b>BeFreed</b> is talking</span><span class="ti-dots"><i>.</i><i>.</i><i>.</i></span></div>
+          <div class="ti ti-c"><span class="orb"><span class="ti-bars"><i></i><i></i><i></i></span></span><span>BeFreed is talking</span><span class="ti-dots"><i>.</i><i>.</i><i>.</i></span></div>
+          <div class="ti ti-d"><span class="ti-bars"><i></i><i></i><i></i><i></i></span><span><b>BeFreed</b> is talking</span><span class="ti-dots"><i>.</i><i>.</i><i>.</i></span></div>
+        </div>
       </div>
 
       <div id="yourturn">
@@ -414,6 +431,16 @@ const BOOKS = [
       { src:"assets/guy-1.mp3", text:"Missing habits twice creates… a dangerous pattern. So focusing on tiny one percent enhancements in everything in life gives back more control. One percent improvement daily compounds to nearly thirty-seven times better performance over a year." },
       { src:"assets/guy-3b.m4a", text:"What? Looks like someone has questions again…" },
       { src:"assets/guy-3d.mp3", text:"Ya, that's an interesting observation. As an AI book I don't really have the ability to cough or have sensation, nor would I have human emotion." },
+    ],
+  },
+  {
+    id:"atomic-crash", title:"Atomic Habits", author:"James Clear", cover:"assets/atomic-habits.jpg",
+    tag:"Car Crash",      // same as Girls version, but 1st clip is the car-crash audio
+    talkPlaysNext:true,
+    clips:[
+      { src:"assets/car-crash-1.mp3", text:"" },
+      { src:"assets/power-2.mp3", text:"What? Looks like someone has questions again…" },
+      { src:"assets/power-3b.mp3", text:"Ya, that's an interesting observation. As an AI book I don't really have the ability to cough or have sensation, nor would I have human emotion." },
     ],
   },
   {
@@ -504,7 +531,7 @@ BOOKS.forEach((book,i)=>{
   btn.appendChild(coverEl(book));
   if(book.tag){
     const tg = document.createElement("span");
-    tg.className = "tag " + book.tag.toLowerCase();
+    tg.className = "tag " + book.tag.toLowerCase().replace(/\s+/g,"-");
     tg.textContent = book.tag;
     btn.appendChild(tg);
   }
@@ -623,6 +650,7 @@ function startCountdown(){
 
 function enterPlayer(){
   setScreen("player");
+  if(!player.dataset.ind) player.dataset.ind = "a";   // talking-indicator style
   playClip(0);                       // book speaks its opening line on entry
 }
 
@@ -775,6 +803,7 @@ micBtn.addEventListener("click", ()=>{
   buildFigure(current);
   if(q.get("mouth")) figureEl.dataset.mouth = q.get("mouth");
   setScreen("player");
+  player.dataset.ind = q.get("ind") || "a";
   clipIndex = +(q.get("clip")||0);
   const st = q.get("state")||"podcast";
   app.dataset.state = st;
