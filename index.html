@@ -86,6 +86,7 @@
   .tag.girls{background:#e8458a;}
   .tag.guys{background:#2f7fd1;}
   .tag.car-crash{background:#c0392b;}
+  .tag.rick-morty{background:#46962b;}
   .cover{
     width:100%; aspect-ratio:2/3;
     border-radius:12px; overflow:hidden;
@@ -428,6 +429,16 @@ const BOOKS = [
     ],
   },
   {
+    id:"atomic-morty", title:"Atomic Habits", author:"James Clear", cover:"assets/atomic-habits.jpg",
+    tag:"Rick & Morty",   // same as Girls version, but 1st clip is the Morty audio
+    talkPlaysNext:true,
+    clips:[
+      { src:"assets/morty-1.mp3", text:"" },
+      { src:"assets/power-2.mp3", text:"What? Looks like someone has questions again…" },
+      { src:"assets/power-3b.mp3", text:"Ya, that's an interesting observation. As an AI book I don't really have the ability to cough or have sensation, nor would I have human emotion." },
+    ],
+  },
+  {
     id:"attached", title:"Attached", author:"Amir Levine & Rachel Heller", cover:"assets/attached.jpg",
     clips:[
       { src:"assets/script1-1.mp3", text:"OH you wanna read me NOW?? After THREE YEARS?? You left me on read longer than your situationship. That's delulu. Lock in!" },
@@ -515,7 +526,7 @@ BOOKS.forEach((book,i)=>{
   btn.appendChild(coverEl(book));
   if(book.tag){
     const tg = document.createElement("span");
-    tg.className = "tag " + book.tag.toLowerCase().replace(/\s+/g,"-");
+    tg.className = "tag " + book.tag.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
     tg.textContent = book.tag;
     btn.appendChild(tg);
   }
